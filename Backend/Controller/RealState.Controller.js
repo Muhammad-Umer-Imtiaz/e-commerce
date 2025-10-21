@@ -1,11 +1,11 @@
-import cloudinary from "../Config/Cloudinary.js";
 import { catchAsyncErrors } from "../Middleware/catchAsyncError.js";
 import ErrorHandler from "../Middleware/error.js";
+import { RealState } from "../Models/RealState.Model.js";
 import { User } from "../Models/User.Model.js";
 import jwt from "jsonwebtoken";
-import { Vehicle } from "../Models/Vehicle.Model.js";
+import cloudinary from "../Config/Cloudinary.js";
 
-export const createVehicle = catchAsyncErrors(async (req, res, next) => {
+export const createRealState = catchAsyncErrors(async (req, res, next) => {
   try {
     const images = req.files;
     if (!images)
@@ -19,52 +19,53 @@ export const createVehicle = catchAsyncErrors(async (req, res, next) => {
         );
       }
     }
-    const { name, description, type, location, condition } = req.body;
+    const { title, description, type, location, price } = req.body;
     const id = req.user._id;
-    if (!name || !description || !type || !location || !condition)
+    if (!title || !description || !type || !location || !price)
       return next(new ErrorHandler("Please Fill all required Fields", 400));
     const imageLinks = images.map((file) => ({
       public_id: file.filename,
       url: file.path,
     }));
-    const vehicle = await Vehicle.create({
-      name,
+    const realState = await RealState.create({
+      title,
       description,
       type,
       location,
-      condition,
+      price,
       images: imageLinks,
       createdBy: id,
     });
     return res.status(201).json({
       success: true,
       message: "Created Successfully",
-      vehicle,
+      realState,
     });
   } catch (error) {
     next(error);
   }
 });
-export const deleteVehicle = catchAsyncErrors(async (req, res, next) => {
+
+export const deleteRealState = catchAsyncErrors(async (req, res, next) => {
   try {
     const id = req.params.id;
     if (!id) return next(new ErrorHandler("Invalid id ", 400));
-    const vehicle = await Vehicle.findByIdAndDelete(id);
-    if (!vehicle) return next(new ErrorHandler("not Found any vehicle", 404));
-    for (let img of vehicle.images) {
+    const realState = await RealState.findByIdAndDelete(id);
+    if (!realState) return next(new ErrorHandler("not Found ", 404));
+    for (let img of realState.images) {
       await cloudinary.v2.uploader.destroy(img.public_id);
     }
 
     res.status(200).json({
       success: true,
-      message: "Vehicle deleted successfully",
+      message: " Deleted successfully",
     });
   } catch (error) {
     next(error);
   }
 });
 
-export const updateVechile = catchAsyncErrors(async (req, res, next) => {
+export const updateRealState = catchAsyncErrors(async (req, res, next) => {
   try {
     const id = req.params.id;
     if (!id) return next(new ErrorHandler("Invalid id ", 400));
@@ -80,92 +81,92 @@ export const updateVechile = catchAsyncErrors(async (req, res, next) => {
         );
       }
     }
-    const { name, description, type, location, condition } = req.body;
-    if (!name || !description || !type || !location || !condition)
+    const { title, description, type, location, price } = req.body;
+    if (!title || !description || !type || !location || !price)
       return next(new ErrorHandler("Please Fill all required Fields", 400));
     const imageLinks = images.map((file) => ({
       public_id: file.filename,
       url: file.path,
     }));
 
-    const vehicle = await Vehicle.findByIdAndUpdate(
+    const realState = await RealState.findByIdAndUpdate(
       id,
       {
-        name,
+        title,
         description,
         type,
         location,
-        condition,
+        price,
         images: imageLinks,
       },
       { new: true, runValidators: true }
     );
 
-    if (!vehicle) return next(new ErrorHandler("Vehicle not found", 404));
+    if (!realState) return next(new ErrorHandler("Not found", 404));
     return res.status(201).json({
       success: true,
       message: "Created Successfully",
-      vehicle,
+      realState,
     });
   } catch (error) {
     next(error);
   }
 });
 
-export const getVehiclePagination = catchAsyncErrors(async (req, res, next) => {
-  try {
-    const page = parseInt(req.query.offset) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const skip = (page - 1) * limit;
-    const [results, total] = await Promise.all([
-      Vehicle.find()
-        .isActive("active")
-        .sort({ created: -1 })
-        .skip(skip)
-        .limit(limit),
-      Vehicle.countDocuments({ status: "active" }),
-    ]);
+export const getRealStatePagination = catchAsyncErrors(
+  async (req, res, next) => {
+    try {
+      const page = parseInt(req.query.offset) || 1;
+      const limit = parseInt(req.query.limit) || 20;
+      const skip = (page - 1) * limit;
+      const [results, total] = await Promise.all([
+        RealState.find()
+          .isActive("active")
+          .sort({ created: -1 })
+          .skip(skip)
+          .limit(limit),
+        RealState.countDocuments({ status: "active" }),
+      ]);
 
-    return res.status(200).json({
-      success: true,
-      page,
-      perPage: limit,
-      totalPages: Math.ceil(total / limit),
-      totalResults: total,
-      currentResults: results.length,
-      results,
-    });
-  } catch (error) {
-    next(error);
+      return res.status(200).json({
+        success: true,
+        page,
+        perPage: limit,
+        totalPages: Math.ceil(total / limit),
+        totalResults: total,
+        currentResults: results.length,
+        results,
+      });
+    } catch (error) {
+      next(error);
+    }
   }
-});
+);
 
-export const getUserVehicle = catchAsyncErrors(async (req, res, next) => {
+export const getUserRealState = catchAsyncErrors(async (req, res, next) => {
   try {
-    const vehicles = await Vehicle.find({ createdBy: req.user._id }).populate(
-      "createdBy",
-      "name email createdAt avatar"
-    );
-    if (!vehicles)
+    const realState = await RealState.find({
+      createdBy: req.user._id,
+    }).populate("createdBy", "name email createdAt avatar");
+    if (!realState)
       return next(
-        new ErrorHandler("You donot have any Vehicles ads right now", 404)
+        new ErrorHandler("You donot have any Real State ads right now", 404)
       );
-    return res.status(200).json({ success: true, vehicles });
+    return res.status(200).json({ success: true, realState });
   } catch (error) {
     next(error);
   }
 });
-// logic here if user login then show detail of seller also else show only ads details
-export const getSingleVehicle = catchAsyncErrors(async (req, res, next) => {
+export const getSingleRealState = catchAsyncErrors(async (req, res, next) => {
   try {
     const { id } = req.params;
 
     console.log(req.user);
 
-    if (!id) return next(new ErrorHandler("Vehicle ID not provided", 400));
+    if (!id) return next(new ErrorHandler("ID not provided", 400));
 
     // Base query
-    let query = Vehicle.findById(id);
+    let query = RealState.findById(id);
 
     // If user is logged in, populate the 'createdBy' field
     const token = req.cookies.token;
@@ -176,17 +177,15 @@ export const getSingleVehicle = catchAsyncErrors(async (req, res, next) => {
       query = query.populate("createdBy", "name email createdAt avatar");
     }
 
-    const vehicle = await query;
+    const realState = await query;
 
-    if (!vehicle) return next(new ErrorHandler("Vehicle not found", 404));
+    if (!realState) return next(new ErrorHandler("Not found", 404));
 
     return res.status(200).json({
       success: true,
-      vehicle,
+      realState,
     });
   } catch (error) {
     next(error);
   }
 });
-
-//end

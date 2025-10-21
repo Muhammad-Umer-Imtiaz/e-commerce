@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
 
-const vehicleSchema = mongoose.Schema(
+const realStateSchema = mongoose.Schema(
   {
-    name: {
+    title: {
       type: String,
       required: true,
     },
@@ -18,11 +18,15 @@ const vehicleSchema = mongoose.Schema(
       type: String,
       required: true,
     },
-    condition: {
+    price: {
       type: String,
       required: true,
-      enum: ["New", "Old"],
     },
+    // condition: {
+    //   type: String,
+    //   required: true,
+    //   enum: ["New", "Old"],
+    // },
     isActive: {
       type: String,
       enum: ["pending", "active", "reject", "expired"],
@@ -49,7 +53,7 @@ const vehicleSchema = mongoose.Schema(
   },
   { timestamps: true }
 );
-vehicleSchema.query.isActive = function (status) {
+realStateSchema.query.isActive = function (status) {
   return this.where({ isActive: status });
 };
-export const Vehicle = mongoose.model("Vehicle", vehicleSchema);
+export const RealState = mongoose.model("RealState", realStateSchema);

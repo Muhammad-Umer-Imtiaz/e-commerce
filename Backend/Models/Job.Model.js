@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const vehicleSchema = mongoose.Schema(
+const jobSchema = mongoose.Schema(
   {
     name: {
       type: String,
@@ -18,10 +18,9 @@ const vehicleSchema = mongoose.Schema(
       type: String,
       required: true,
     },
-    condition: {
+    salary: {
       type: String,
       required: true,
-      enum: ["New", "Old"],
     },
     isActive: {
       type: String,
@@ -29,18 +28,18 @@ const vehicleSchema = mongoose.Schema(
       default: "active",
     },
 
-    images: [
-      {
-        public_id: {
-          type: String,
-          required: true,
-        },
-        url: {
-          type: String,
-          required: true,
-        },
-      },
-    ],
+    // images: [
+    //   {
+    //     public_id: {
+    //       type: String,
+    //       required: true,
+    //     },
+    //     url: {
+    //       type: String,
+    //       required: true,
+    //     },
+    //   },
+    // ],
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -49,7 +48,7 @@ const vehicleSchema = mongoose.Schema(
   },
   { timestamps: true }
 );
-vehicleSchema.query.isActive = function (status) {
+jobSchema.query.isActive = function (status) {
   return this.where({ isActive: status });
 };
-export const Vehicle = mongoose.model("Vehicle", vehicleSchema);
+export const Job = mongoose.model("Job", jobSchema);

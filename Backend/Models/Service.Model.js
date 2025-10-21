@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const vehicleSchema = mongoose.Schema(
+const serviceSchema = mongoose.Schema(
   {
     name: {
       type: String,
@@ -18,29 +18,34 @@ const vehicleSchema = mongoose.Schema(
       type: String,
       required: true,
     },
-    condition: {
-      type: String,
-      required: true,
-      enum: ["New", "Old"],
-    },
     isActive: {
       type: String,
       enum: ["pending", "active", "reject", "expired"],
       default: "active",
     },
-
-    images: [
-      {
-        public_id: {
-          type: String,
-          required: true,
-        },
-        url: {
-          type: String,
-          required: true,
-        },
+    document: {
+      public_id: {
+        type: String,
+        required: true,
       },
-    ],
+      url: {
+        type: String,
+        required: true,
+      },
+    },
+
+    // images: [
+    //   {
+    //     public_id: {
+    //       type: String,
+    //       required: true,
+    //     },
+    //     url: {
+    //       type: String,
+    //       required: true,
+    //     },
+    //   },
+    // ],
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -49,7 +54,7 @@ const vehicleSchema = mongoose.Schema(
   },
   { timestamps: true }
 );
-vehicleSchema.query.isActive = function (status) {
+serviceSchema.query.isActive = function (status) {
   return this.where({ isActive: status });
 };
-export const Vehicle = mongoose.model("Vehicle", vehicleSchema);
+export const Service = mongoose.model("Service", serviceSchema);
