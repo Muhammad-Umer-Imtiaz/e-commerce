@@ -46,13 +46,18 @@ export const register = catchAsyncErrors(async (req, res, next) => {
 
     await sendMail({
       email,
-      subject: "OTP to verify account",
+      subject: "🔐 Verify Your Account – OTP Code",
       text: `Your OTP is ${otp} and OTP expire in 10 minutes`,
     });
 
     return res.status(201).json({
       message: "Check Email to Verify OTP",
-      user,
+      user: {
+        userName: user.userName,
+        email: user.email,
+        avatar: user.avatar || null,
+        isVerified: user.isVerified,
+      },
       success: true,
     });
   } catch (error) {
@@ -174,6 +179,33 @@ export const getProfile = catchAsyncErrors(async (req, res, next) => {
   }
 });
 
+export const editprofile = catchAsyncErrors(async (req, res, next) => {
+  try {
+    const { userName } = req.body;
+    const avatar = req.file;
+    const id = req.user._id;
+    console.log("id is ", id);
+    if (!userName || !avatar)
+      return next(new ErrorHandler("Missing Fields.", 400));
+    let user = await User.findById(id);
+    if (!user) return next(new ErrorHandler("User not found", 404));
+    // if (email) user.email = email;
+    if (userName) user.userName = userName;
+
+    if (avatar) {
+      user.avatar = avatar;
+    }
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      user,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 // Forget Password
 export const forgetPassword = catchAsyncErrors(async (req, res, next) => {
   console.log("📨 Forget Password API called");
@@ -201,17 +233,66 @@ export const forgetPassword = catchAsyncErrors(async (req, res, next) => {
 
   await user.save({ validateBeforeSave: false });
 
-  const resetUrl = `${process.env.BACKEND_URL}/api/user/reset-password/${resetToken}`;
+  const resetUrl = `${process.env.FRONTEND_URL}/api/user/reset-password/${resetToken}`;
   // const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
 
   // HTML Email Template
-  const html = `...`; // Keep your HTML here
   try {
     await sendMail({
       email: user.email,
-      subject: "Password Reset Request from AI Tools Cover",
-      html,
-      text: `Password reset link (valid for 15 minutes): ${resetUrl}`,
+      subject: "Password Reset Request | AI Tools Cover",
+      html: `
+  <div style="
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5f7fa;
+      padding: 40px 20px;
+      text-align: center;
+      color: #333;
+  ">
+    <div style="
+        background-color: #ffffff;
+        max-width: 500px;
+        margin: auto;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        overflow: hidden;
+    ">
+      <div style="background-color: #4f46e5; padding: 20px;">
+        <h2 style="color: #ffffff; margin: 0;">AI Tools Cover</h2>
+      </div>
+
+      <div style="padding: 30px;">
+        <h3 style="margin-top: 0;">Password Reset Request</h3>
+        <p style="font-size: 15px; line-height: 1.6;">
+          Hi <strong>${user.name}</strong>,<br /><br />
+          We received a request to reset your password. Click the button below to reset it.
+          <br /><br />
+          This link is valid for <strong>15 minutes</strong>.
+        </p>
+
+        <a href="${resetUrl}" style="
+          display: inline-block;
+          background-color: #4f46e5;
+          color: #ffffff;
+          padding: 12px 24px;
+          border-radius: 8px;
+          text-decoration: none;
+          font-weight: 600;
+          margin: 20px 0;
+          transition: background 0.3s ease;
+        ">Reset Password</a>
+
+        <p style="font-size: 13px; color: #666;">
+          If you didn’t request this, you can safely ignore this email.
+        </p>
+      </div>
+
+      <div style="background-color: #f3f4f6; padding: 15px; font-size: 12px; color: #777;">
+        <p style="margin: 0;">© ${new Date().getFullYear()} AI Tools Cover. All rights reserved.</p>
+      </div>
+    </div>
+  </div>
+  `,
     });
 
     return res.json({
@@ -268,6 +349,37 @@ export const resetPassword = catchAsyncErrors(async (req, res, next) => {
     await user.save();
 
     return res.json({ success: true, message: "Password reset successful" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+export const changePassword = catchAsyncErrors(async (req, res, next) => {
+  try {
+    const { oldPassword, newPassword, confirmPassword } = req.body;
+    if (!oldPassword || !newPassword || !confirmPassword)
+      return new ErrorHandler("Old or new Password are missing", 404);
+    if (newPassword !== confirmPassword) {
+      return next(
+        new ErrorHandler("Password and Confirm Password do not match", 400)
+      );
+    }
+    console.log(req.user._id);
+    const user = await User.findById(req.user._id).select("+password");
+    if (!user) return next(new ErrorHandler("User not found", 404));
+    const isMatch = await user.comparePassword(oldPassword);
+    console.log("Hello from ", isMatch);
+    if (!isMatch) {
+      return next(
+        new ErrorHandler(
+          "Wrong old Password please Enter Correct passowrd if you donot remeber your old password then go on forget password",
+          401
+        )
+      );
+    }
+    user.password = newPassword;
+    await user.save();
+    return res.json({ success: true, message: "Password Change successful" });
   } catch (error) {
     next(error);
   }
