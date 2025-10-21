@@ -51,4 +51,12 @@ const jobSchema = mongoose.Schema(
 jobSchema.query.isActive = function (status) {
   return this.where({ isActive: status });
 };
+
+// 🔍 TEXT INDEX for fast text search
+jobSchema.index({
+  name: "text",
+  description: "text",
+  location: "text",
+  type: "text",
+});
 export const Job = mongoose.model("Job", jobSchema);

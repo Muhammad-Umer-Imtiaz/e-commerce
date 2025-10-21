@@ -147,3 +147,220 @@ export const getSingleJobs = catchAsyncErrors(async (req, res, next) => {
     next(error);
   }
 });
+
+/* ======================================================
+   1️⃣ REGEX SEARCH
+   - Partial match
+   - Works locally
+   - Slower on large data
+====================================================== */
+export const regexSearch = catchAsyncErrors(async (req, res, next) => {
+  try {
+    const { word = "", location = "", page = 1, limit = 20 } = req.query;
+
+    const wordRegex = new RegExp(word, "i");
+    const locationRegex = new RegExp(location, "i");
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const jobs = await Job.find({
+      $and: [{ name: wordRegex }, { location: locationRegex }],
+    })
+      .skip(skip)
+      .limit(Number(limit));
+
+    res.status(200).json({
+      success: true,
+      method: "regex",
+      count: jobs.length,
+      currentPage: Number(page),
+      nextPage: jobs.length === Number(limit) ? Number(page) + 1 : null,
+      data: jobs,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* ======================================================
+   2️⃣ TEXT SEARCH
+   - Fast with index
+   - Matches whole words
+   - Works locally
+   - Need text index in schema
+====================================================== */
+export const textSearch = catchAsyncErrors(async (req, res, next) => {
+  try {
+    const { word = "", location = "", page = 1, limit = 20 } = req.query;
+
+    const query = [];
+    if (word) query.push({ $text: { $search: word } });
+    if (location) query.push({ location: new RegExp(location, "i") });
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const jobs = await Job.find(query.length ? { $and: query } : {}, {
+      score: { $meta: "textScore" },
+    })
+      .sort({ score: { $meta: "textScore" } })
+      .skip(skip)
+      .limit(Number(limit));
+
+    res.status(200).json({
+      success: true,
+      method: "text",
+      count: jobs.length,
+      currentPage: Number(page),
+      nextPage: jobs.length === Number(limit) ? Number(page) + 1 : null,
+      data: jobs,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* ======================================================
+   3️⃣ HYBRID SEARCH
+   - Combines Text + Regex fallback
+   - Balanced accuracy + performance
+====================================================== */
+export const hybridSearch = catchAsyncErrors(async (req, res, next) => {
+  try {
+    const { word = "", location = "", page = 1, limit = 20 } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+    let jobs = [];
+
+    if (word) {
+      // Try text search first
+      jobs = await Job.find(
+        {
+          $and: [
+            { $text: { $search: word } },
+            { location: new RegExp(location, "i") },
+          ],
+        },
+        { score: { $meta: "textScore" } }
+      )
+        .sort({ score: { $meta: "textScore" } })
+        .skip(skip)
+        .limit(Number(limit));
+    }
+
+    // Fallback to regex if no text search results
+    if (jobs.length === 0 && word) {
+      console.log("⚙️ Fallback to regex search");
+      jobs = await Job.find({
+        $and: [
+          { name: new RegExp(word, "i") },
+          { location: new RegExp(location, "i") },
+        ],
+      })
+        .skip(skip)
+        .limit(Number(limit));
+    }
+
+    res.status(200).json({
+      success: true,
+      method: jobs.length ? "hybrid" : "none",
+      count: jobs.length,
+      currentPage: Number(page),
+      nextPage: jobs.length === Number(limit) ? Number(page) + 1 : null,
+      data: jobs,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* ======================================================
+   3️⃣ ATLAS SEARCH
+   - Smart fuzzy matching
+   - Typo tolerant
+   - Requires MongoDB Atlas
+====================================================== */
+
+/* ======================================================
+   🔍 ATLAS SEARCH (MongoDB Atlas only)
+   - Uses Atlas Search index
+   - Supports fuzzy + multiple field matching
+   - Super fast for large datasets
+====================================================== */
+export const atlasSearch = catchAsyncErrors(async (req, res, next) => {
+  try {
+    const { word = "", location = "", page = 1, limit = 20 } = req.query;
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    // If no search term, return recent jobs (with pagination)
+    if (!word && !location) {
+      const jobs = await Job.find().skip(skip).limit(Number(limit));
+      return res.status(200).json({
+        success: true,
+        method: "atlas",
+        count: jobs.length,
+        currentPage: Number(page),
+        data: jobs,
+      });
+    }
+
+    const mustQueries = [];
+
+    // Require BOTH word and location matches
+    if (word) {
+      mustQueries.push({
+        text: {
+          query: word,
+          path: ["name", "description"],
+          fuzzy: { maxEdits: 2 },
+        },
+      });
+    }
+
+    if (location) {
+      mustQueries.push({
+        text: {
+          query: location,
+          path: ["location"],
+          fuzzy: { maxEdits: 2 },
+        },
+      });
+    }
+
+    const pipeline = [
+      {
+        $search: {
+          index: "default", // your Atlas Search index name
+          compound: {
+            must: mustQueries,
+          },
+        },
+      },
+      {
+        $project: {
+          name: 1,
+          description: 1,
+          location: 1,
+          salary: 1,
+          type: 1,
+          score: { $meta: "searchScore" },
+        },
+      },
+      { $skip: skip },
+      { $limit: Number(limit) },
+    ];
+
+    const jobs = await Job.aggregate(pipeline);
+
+    return res.status(200).json({
+      success: true,
+      method: "atlas",
+      count: jobs.length,
+      currentPage: Number(page),
+      nextPage: jobs.length === Number(limit) ? Number(page) + 1 : null,
+      data: jobs,
+    });
+  } catch (error) {
+    console.error("❌ Atlas Search Error:", error);
+    next(error);
+  }
+});

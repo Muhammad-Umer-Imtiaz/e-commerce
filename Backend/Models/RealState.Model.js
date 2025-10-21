@@ -56,4 +56,10 @@ const realStateSchema = mongoose.Schema(
 realStateSchema.query.isActive = function (status) {
   return this.where({ isActive: status });
 };
+realStateSchema.index({
+  title: "text",
+  description: "text",
+  location: "text",
+  address: "text",
+});
 export const RealState = mongoose.model("RealState", realStateSchema);

@@ -57,4 +57,9 @@ const serviceSchema = mongoose.Schema(
 serviceSchema.query.isActive = function (status) {
   return this.where({ isActive: status });
 };
+serviceSchema.index({
+  name: "text",
+  description: "text",
+  location: "text",
+});
 export const Service = mongoose.model("Service", serviceSchema);

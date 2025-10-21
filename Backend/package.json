@@ -6,7 +6,11 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon index.js",
-    "start": "node index.js"
+    "start": "node index.js",
+    "jobseed": "node Seed/seedJob.js",
+    "vehicleseed": "node Seed/seedvehicle.js",
+    "serviceseed": "node Seed/seedService.js",
+    "realestateseed": "node Seed/seedRealState.js"
   },
   "keywords": [],
   "author": "",

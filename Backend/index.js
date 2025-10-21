@@ -7,7 +7,7 @@ import vehicleRoute from "./Routes/Vehicle.Route.js";
 import realStateRoute from "./Routes/RealState.Route.js";
 import serviceRoute from "./Routes/Service.Route.js";
 import jobRoute from "./Routes/Job.Route.js";
-
+import searchRoute from "./Routes/searchRoutes.js";
 import { dbConnection } from "./Config/dbConnection.js";
 import { errorMiddleware } from "./Middleware/error.js";
 dotenv.config({ path: "./Config/.env" });
@@ -31,6 +31,7 @@ app.use("/api/vehicle", vehicleRoute);
 app.use("/api/real-state", realStateRoute);
 app.use("/api/job", jobRoute);
 app.use("/api/service", serviceRoute);
+app.use("/api/search", searchRoute);
 app.get("/", (req, res) => {
   res.send("Backend Running Successfully 🚀");
 });
@@ -60,4 +61,3 @@ const startServer = async () => {
 };
 
 startServer();
- 

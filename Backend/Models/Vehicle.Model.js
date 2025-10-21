@@ -52,4 +52,10 @@ const vehicleSchema = mongoose.Schema(
 vehicleSchema.query.isActive = function (status) {
   return this.where({ isActive: status });
 };
+vehicleSchema.index({
+  name: "text",
+  description: "text",
+  type: "text",
+  location: "text",
+});
 export const Vehicle = mongoose.model("Vehicle", vehicleSchema);
